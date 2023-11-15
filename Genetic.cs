@@ -1,97 +1,142 @@
 using System.Collections.Generic;
 using System;
+using System.Linq;
+using System.Net.Mail;
 
 public class Genetic
 {
+    int iteration = 1;
+    int maxIterations;
     Excel data;
-    byte agents;
-    byte targetFitness;
-    int iter = 0;
-    byte[][6] genes; //population byte[agents][6]
-    byte[] currentFitness;
+    byte agentsCount;
+    double targetFitness;
+    byte genesCount = 6;
+    byte[][] agents;
+    double[] currentFitness; //вычисляется путём складывания всех фитнесов для каждой строчки (чем больше тем лучше)
     Random rnd = new Random();
 
-    Genetic(Excel data, byte agents, byte targetFitness)
+    public Genetic(Excel data, byte agentsCount, double targetFitness, int maxIterations)
     {
         this.data = data;
-        this.agents = agents;
+        this.agentsCount = agentsCount;
         this.targetFitness = targetFitness;
+        this.maxIterations = maxIterations;
 
-        genes = new byte[agents][6];
-        currentFitness[agents];
+        agents = new byte[agentsCount][];
+        currentFitness = new double[agentsCount];
 
-        GenerateGenes();
-        //Evolve();
+        GenerateAgents();
+        Evolve();
     }
 
-    void GenerateGenes() //генерируем случайные гены
+    void GenerateAgents() //генерируем случайные гены
     {
-        for (int i = 0; i < agents; i++) 
+        for (int i = 0; i < agentsCount; i++) 
         {
-            byte[6] buffer;
+            byte[] buffer = new byte[agentsCount];
             rnd.NextBytes(buffer);
-            genes[i] = buffer;
+            agents[i] = buffer;
         }
     }
 
     void Evolve()
     {
-        //и тут большой луп
+        bool IsEvolutionComplete()
+        {
+            for (int i = 0; i < agentsCount; i++)
+                for (int j = 0; j < data.rows; j++)
+                    if (Fitness(Function(data.coefficients[j], agents[i]), data.desiredValues[j]) < targetFitness) return false;
+            return true;
+        }
+
         while (true)
         {
-            for (int i; i < data.rows; i++)
-            {
-                Fitness(Function(), data.desired[i]);
-            }
-            iter++;
-            Mutation();
-            Sort(genes);
-            Crossover(genes);
+            if (IsEvolutionComplete()) return;
+            if (iteration > maxIterations) return;
+            iteration++;
+            SortAgents();
+            CrossoverAgents();
         }
     }
 
-    short Function(byte a, byte b, byte c, byte d, byte e, byte f, byte x1, byte x2, byte x3) => 
-        a*x1+b*x2+c*x3+d*x1*x1+e*x2*x2+f*x3*x3;
-
-    short Fitness(short y, short desired)
+    void SortAgents()
     {
-        error = abs(desired-y);
-        errorNorm = 1/(1+Exp(-2*error));
-        return 1-errorNorm;
+        FitnessAgents();
+        var sortedData = agents
+            .Zip(currentFitness, (agent, fitness) => new { Agent = agent, Fitness = fitness })
+            .OrderByDescending(data => data.Fitness)
+            .ToArray();
+
+        agents = sortedData.Select(data => data.Agent).ToArray();
+        currentFitness = sortedData.Select(data => data.Fitness).ToArray();
     }
 
-    double Mutation(double x0, double x1)  // мутация: генерация случайной величины
+    void FitnessAgents()
     {
-        
+        for (int i = 0; i < agentsCount; i++)
+        {
+            currentFitness[i] = 0;
+            for (int j = 0; j < data.rows; j++)
+                currentFitness[i] += Fitness(Function(data.coefficients[j], agents[i]), data.desiredValues[j]);
+        }
     }
 
-    double Inversion(double x, double eps)  // инверсия: поиск в окрестностях точки
-    {
-        int sign = 0;//static
-        sign++;
-        sign %= 2;
-        if (sign == 0) return x - eps;
-        else return x + eps;
-    }
 
-    void Crossover()  // кроссовер: среднее арифметическое
+    void CrossoverAgents() //тут могут быть разные стратегии
     {
-        //определять на сколько сдвигать
-        //сдвигать одно влево, другое в право на кол-во знаков
-    }
-
-    void Sort(double *x, double *y)  // сортировка
-    {
-        for (int i = 0; i < 100; i++)
-            for (int j = i + 1; j < 100; j++) 
-            if (fabs(y[j]) < fabs(y[i])) {
-                double temp = y[i];
-                y[i] = y[j];
-                y[j] = temp;
-                temp = x[i];
-                x[i] = x[j];
-                x[j] = temp;
+        for (int i = 0; i < agentsCount/2; i++)
+        {
+            for (int j = 0; j < genesCount; j++)
+            {
+                var crossover = Crossover(agents[i][j], agents[i+1][j]);
+                agents[i][j] = Mutation(crossover[0]);
+                agents[i+1][j] = Mutation(crossover[1]);
+                crossover = Crossover(agents[i][j], agents[i+1][j]);
+                agents[i+(agentsCount/2)-1][j] = Mutation(crossover[0]);
+                agents[i+(agentsCount/2)][j] = Mutation(crossover[1]);
             }
+        }
+    }
+
+    short Function(List<byte> coefficients, byte[] genes) => (short)
+        (genes[0]*coefficients[0]+
+        genes[1]*coefficients[1]+
+        genes[2]*coefficients[2]+
+        genes[3]*coefficients[0]*coefficients[0]+
+        genes[4]*coefficients[1]*coefficients[1]+
+        genes[5]*coefficients[2]*coefficients[2]);
+
+    double Fitness(short y, short desired)
+    {
+        var error = Math.Abs(desired-y);
+        var errorNorm = 1/Math.Pow(1.02, error); //(1+Math.E*(-2*error));
+        return errorNorm;
+    }
+
+    byte Mutation(byte x) // мутация: генерация случайной величины
+    {
+        int bitToFlip = rnd.Next(8);
+        byte mask = (byte)(1 << bitToFlip);
+        if (rnd.NextDouble() > 0.9) x = (byte)(x ^ mask);
+        return x;
+    }
+
+    // double Inversion(double x, double eps) // инверсия: поиск в окрестностях точки
+    // {
+    //     int sign = 0;//static
+    //     sign++;
+    //     sign %= 2;
+    //     if (sign == 0) return x - eps;
+    //     else return x + eps;
+    // }
+
+    byte[] Crossover(byte n, byte m) // кроссовер
+    {
+        var targetBit = rnd.Next(1,8);
+        string bitMaskString = "";
+        for (int i = 0; i < 8; i++)
+            bitMaskString += i < targetBit ? "1" : "0";
+        byte bitMask = Convert.ToByte(bitMaskString, 2);
+        return new byte[]{(byte)((n & bitMask) | (m & ~bitMask)), (byte)((n & ~bitMask) | (m & bitMask))};
     }
 }
-
