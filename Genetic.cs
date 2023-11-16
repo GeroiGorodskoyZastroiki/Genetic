@@ -81,7 +81,6 @@ public class Genetic
         }
     }
 
-
     void CrossoverAgents() //тут могут быть разные стратегии
     {
         for (int i = 0; i < agentsCount/2; i++)
