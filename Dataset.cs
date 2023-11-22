@@ -1,7 +1,6 @@
-using System.Collections.Generic;
 using Aspose.Cells;
 
-public class Excel
+public class Dataset
 {
     static Workbook wb = new Workbook("Датасет.xlsx");
     static Worksheet ws = wb.Worksheets[0];
@@ -9,7 +8,7 @@ public class Excel
     public List<List<byte>> coefficients = new List<List<byte>>();
     public List<short> desiredValues = new List<short>();
 
-    public Excel()
+    public Dataset()
     {
         for (int i = 1; i < rows + 1; i++)
         {
