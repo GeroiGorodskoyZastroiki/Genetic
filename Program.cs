@@ -1,4 +1,7 @@
-﻿new Genetic(new Dataset(), 20, 0.01, 200);
+﻿// ulong ulv = BitConverter.DoubleToUInt64Bits(vl);
+// Console.WriteLine(BitConverter.UInt64BitsToDouble(ulv));
+
+new Genetic(new Dataset(), 20, 4, 0.01, 200, 0.9f, 0.9f);
 
 // Создаём новую случайную популяцию из 20 агентов
 // {

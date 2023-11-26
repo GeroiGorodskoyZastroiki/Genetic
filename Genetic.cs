@@ -1,3 +1,5 @@
+using static System.BitConverter;
+
 public class Genetic
 {
     int iteration = 0;
@@ -6,16 +8,21 @@ public class Genetic
     byte agentsCount;
     byte evolvePopulationCount;
     double targetFitnessDelta;
+    float mutatePos;
+    float inversePos;
     byte genesCount = 6;
     Agent[] agents;
     Random rnd = new Random();
 
-    public Genetic(Dataset data, byte agentsCount, byte evolvePopulationCount, double targetFitnessDelta, int maxIterations)
+    public Genetic(Dataset data, byte agentsCount, byte evolvePopulationCount, 
+    double targetFitnessDelta, int maxIterations, float mutatePos, float inversePos)
     {
         this.data = data;
         this.agentsCount = agentsCount;
         this.targetFitnessDelta = targetFitnessDelta;
         this.maxIterations = maxIterations;
+        this.mutatePos = mutatePos;
+        this.inversePos = inversePos;
 
         agents = new Agent[agentsCount];
 
@@ -42,7 +49,7 @@ public class Genetic
         {
             for (int i = 0; i < agentsCount; i++)
                 for (int j = 0; j < data.rows; j++)
-                    if (Fitness(Function(data.coefficients[j], agents[i]), data.desiredValues[j]) < targetFitnessDelta) return false;
+                    if (Fitness(Function(data.coefficients[j], agents[i].genes), data.desiredValues[j]) < targetFitnessDelta) return false;
             return true;
         }
 
@@ -59,7 +66,7 @@ public class Genetic
     void SortAgents() //сортирует агентов по общему фитнесу
     {
         FitnessAgents();
-        
+        //
     }
 
     void FitnessAgents()
@@ -77,17 +84,17 @@ public class Genetic
         {
             for (int j = 0; j < genesCount; j++)
             {
-                var crossover = Crossover(agents[i][j], agents[i+1][j]);
-                agents[i][j] = Mutate(ref crossover[0]);
-                agents[i+1][j] = Mutate(ref crossover[1]);
-                crossover = Crossover(agents[i][j], agents[i+1][j]);
-                agents[i+(agentsCount/2)-1][j] = Mutate(crossover[0]);
-                agents[i+(agentsCount/2)][j] = Mutate(crossover[1]);
+                var crossover = Crossover(agents[i].genes[j], agents[i+1].genes[j]);
+                agents[i].genes[j] = Mutate(ref crossover[0]);
+                agents[i+1].genes[j] = Mutate(ref crossover[1]);
+                crossover = Crossover(agents[i].genes[j], agents[i+1].genes[j]);
+                agents[i+(agentsCount/2)-1].genes[j] = Mutate(crossover[0]);
+                agents[i+(agentsCount/2)].genes[j] = Mutate(crossover[1]);
             }
         }
     }
 
-    short Function(List<byte> coefficients, double[] genes) => (short)
+    double Function(List<byte> coefficients, double[] genes) =>
         (genes[0]*coefficients[0]+
         genes[1]*coefficients[1]+
         genes[2]*coefficients[2]+
@@ -95,7 +102,7 @@ public class Genetic
         genes[4]*coefficients[1]*coefficients[1]+
         genes[5]*coefficients[2]*coefficients[2]);
 
-    double Fitness(short y, short desired)
+    double Fitness(double y, short desired)
     {
         var error = Math.Abs(desired-y);
         var errorNorm = 1/(1+Math.E*(-2*error));
@@ -104,26 +111,26 @@ public class Genetic
 
     void Mutate(ref double x) // мутация: генерация случайной величины
     {
-        int bitToFlip = rnd.Next(8);
-        byte mask = (byte)(1 << bitToFlip);
-        if (rnd.NextDouble() > 0.9) x = (byte)(x ^ mask);
+        int bitToFlip = rnd.Next(64);
+        ulong mask = (byte)(1 << bitToFlip);
+        if (rnd.NextDouble() > mutatePos) x = UInt64BitsToDouble(DoubleToUInt64Bits(x) ^ mask);
     }
 
-    double Inverse(double x) // инверсия: поиск в окрестностях точки
-    {
-        var targetBit = rnd.Next(0,64);
-        var tmp = x;
-        x = x << targetBit;
-        return 
-    }
+    // void Inverse(ref double x) // инверсия: поиск в окрестностях точки
+    // {
+    //     var targetBit = rnd.Next(64);
+    //     if (rnd.NextDouble() > inversePos) x = BitConverter.UInt64BitsToDouble(BitConverter.DoubleToUInt64Bits(x) << targetBit);
+    // }
 
     double[] Crossover(double n, double m) // кроссовер
     {
         var targetBit = rnd.Next(0,64);
         string bitMaskString = "";
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 64; i++)
             bitMaskString += i < targetBit ? "1" : "0";
-        double bitMask = Convert.ToByte(bitMaskString, 2);
-        return new double[]{(double)((n & bitMask) | (m & ~bitMask)), (double)((n & ~bitMask) | (m & bitMask))};
+        var bitMask = Convert.ToByte(bitMaskString, 2);
+        return new double[]{
+            UInt64BitsToDouble((DoubleToUInt64Bits(n) & bitMask) | (DoubleToUInt64Bits(m) & (ulong)~bitMask)), 
+            UInt64BitsToDouble((DoubleToUInt64Bits(n) & (ulong)~bitMask) | (DoubleToUInt64Bits(m) & bitMask))};
     }
 }
