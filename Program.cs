@@ -1,7 +1,7 @@
-﻿// ulong ulv = BitConverter.DoubleToUInt64Bits(vl);
-// Console.WriteLine(BitConverter.UInt64BitsToDouble(ulv));
+﻿// Console.WriteLine(Convert.ToString(((long)((DoubleToUInt64Bits(x) >> 64 - targetBit << 64 - targetBit) | (DoubleToUInt64Bits(y) << targetBit >> targetBit))), 2).PadLeft(64, '0'));
+// Console.WriteLine(Convert.ToString(((long)((DoubleToUInt64Bits(x) << targetBit >> targetBit) | (DoubleToUInt64Bits(y) >> 64 - targetBit << 64 - targetBit))), 2).PadLeft(64, '0'));
 
-new Genetic(new Dataset(), 20, 4, 0.01, 200, 0.9f, 0.9f);
+new Genetic(new Dataset(), 20, 4, 0.01, 200, 0.1f, 0.1f);
 
 // Создаём новую случайную популяцию из 20 агентов
 // {
