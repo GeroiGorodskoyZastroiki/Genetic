@@ -29,8 +29,8 @@ public class Genetic
 
         agents = new List<Agent>(agentsCount);
 
-        //GenerateAgents();
-        //Evolve();
+        GenerateAgents();
+        Evolve();
     }
 
     void GenerateAgents() //генерируем случайные гены
@@ -52,7 +52,7 @@ public class Genetic
         {
             for (int i = 0; i < agentsCount; i++)
                 for (int j = 0; j < data.rows; j++)
-                    if (Fitness(Function(data.coefficients[j], agents[i].genes), data.desiredValues[j]) < targetFitnessDelta) return false;
+                    if (Math.Abs(Fitness(Function(data.coefficients[j], agents[i].genes), data.desiredValues[j]) - agents[i].fitness) < targetFitnessDelta) return false;
             return true;
         }
 
@@ -82,7 +82,7 @@ public class Genetic
         var newPopulation = new List<Agent>(agentsCount);
         for (int i = 0; i < evolvePopulationCount; i+=2)
         {
-            for (int k = 0; k < agentsCount/evolvePopulationCount; k++)
+            for (int k = 0; k < (agentsCount/evolvePopulationCount)*2; k++)
             {
                 Agent crossover = new Agent(genesCount);
                 for (int j = 0; j < genesCount; j++)
