@@ -12,10 +12,11 @@ public class Genetic
     float inverseChance;
     byte genesCount = 6;
     List<Agent> agents;
+    List<double> prevGenFitness = new List<double>();
     Random rnd = new Random();
 
     public Genetic(Dataset data, byte agentsCount, byte evolvePopulationCount, 
-    double targetFitnessDelta, int maxIterations, float mutateChance, float inverseChance)
+                   double targetFitnessDelta, int maxIterations, float mutateChance, float inverseChance)
     {
         if (evolvePopulationCount % 2 != 0)
             throw new ArgumentException("Число должно быть чётным.", nameof(evolvePopulationCount));
@@ -27,7 +28,7 @@ public class Genetic
         this.mutateChance = mutateChance;
         this.inverseChance = inverseChance;
 
-        agents = new List<Agent>(agentsCount);
+        agents = new List<Agent>();
 
         GenerateAgents();
         Evolve();
@@ -37,47 +38,65 @@ public class Genetic
     {
         for (int i = 0; i < agentsCount; i++) 
         {
+            agents.Add(new Agent(genesCount));
             for (int j = 0; j < genesCount; j++)
             {
                 var value = rnd.NextDouble();
-                agents[i] = new Agent(genesCount);
                 agents[i].genes[j] = value;
             }
         }
+        FitnessAgents();
+        SortAgents();
+        CopyFitness();
     }
 
     void Evolve()
     {
-        bool IsEvolutionComplete() //переписать
+        bool IsEvolutionComplete() //проверяем "развиваются ли агенты"
         {
             for (int i = 0; i < agentsCount; i++)
-                for (int j = 0; j < data.rows; j++)
-                    if (Math.Abs(Fitness(Function(data.coefficients[j], agents[i].genes), data.desiredValues[j]) - agents[i].fitness) < targetFitnessDelta) return false;
+                if (Math.Abs(agents[i].fitness - prevGenFitness[i]) > targetFitnessDelta) return false;
             return true;
         }
 
-        while (true)
+        void Summarize() //конец работы алгоритма
         {
-            if (IsEvolutionComplete()) return;
-            if (iteration > maxIterations) return;
+            Console.WriteLine("Эволюция окончена");
+            Console.WriteLine($"Итераций: {iteration}/{maxIterations}");
+            Console.WriteLine($"Лучшая особь обладает общим фитнесом генов: {agents[1].fitness}");
+        }
+
+        while (true) //основной цикл
+        {
+            if (iteration == maxIterations) break;
             iteration++;
+            EvolveAgents();
             FitnessAgents();
             SortAgents();
-            EvolveAgents();
+            if (IsEvolutionComplete()) break;
+            CopyFitness();
         }
+        Summarize();
     }
 
-    void SortAgents() => //сортирует агентов по общему фитнесу
+    void SortAgents() => //сортируем агентов по общему фитнесу
         agents = agents.OrderByDescending(agent => agent.fitness).ToList();
 
-    void FitnessAgents()
+    void FitnessAgents() //вычисляем фитнесс для агентов
     {
         for (int i = 0; i < agentsCount; i++)
             for (int j = 0; j < data.rows; j++)
                 agents[i].fitness += Fitness(Function(data.coefficients[j], agents[i].genes), data.desiredValues[j]);
     }
 
-    void EvolveAgents() //проверить и доделать
+    void CopyFitness() //сохраняем текущий фитнесс для будущей проверки
+    {
+        prevGenFitness.Clear();
+        for (int i = 0; i < agentsCount; i++)
+            prevGenFitness.Add(agents[i].fitness);
+    }
+
+    void EvolveAgents() //отбираем нужное кол-во агентов, образум потомков, мутируем и инверсируем, заменяем старых агентов
     {
         var newPopulation = new List<Agent>(agentsCount);
         for (int i = 0; i < evolvePopulationCount; i+=2)
@@ -95,6 +114,7 @@ public class Genetic
                 newPopulation.Add(crossover);
             }
         }
+        agents = newPopulation;
     }
 
     double Function(List<byte> coefficients, double[] genes) =>
@@ -105,10 +125,10 @@ public class Genetic
         genes[4]*coefficients[1]*coefficients[1]+
         genes[5]*coefficients[2]*coefficients[2]);
 
-    double Fitness(double y, short desired)
+    double Fitness(double y, short desired) //чем больше фитнесс - тем лучше
     {
         var error = Math.Abs(desired-y);
-        var errorNorm = 1/(1+Math.E*(-2*error));
+        var errorNorm = 1/(1+Math.Exp(-2*error));
         return 1-errorNorm;
     }
 
