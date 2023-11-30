@@ -2,7 +2,7 @@ using static System.BitConverter;
 
 public class Genetic
 {
-    int iteration = 0;
+    int iteration = 1;
     int maxIterations;
     Dataset data;
     byte agentsCount;
@@ -66,10 +66,8 @@ public class Genetic
             Console.WriteLine($"Лучшая особь обладает общим фитнесом генов: {agents[1].fitness}");
         }
 
-        while (true) //основной цикл
+        for (; iteration != maxIterations; iteration++) //основной цикл
         {
-            if (iteration == maxIterations) break;
-            iteration++;
             EvolveAgents();
             FitnessAgents();
             SortAgents();
